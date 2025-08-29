@@ -14,9 +14,9 @@ const server = http.createServer((req, res) => {
   const urlParams = new URL(req.url, `http://${req.headers.host}`);
   const id = urlParams.searchParams.get('id');
 
-  // ❌ Vulnerabilidad: concatenación directa en SQL
-  const query = `SELECT * FROM users WHERE id = ${id}`;
-  console.log("Ejecutando consulta:", query);
+   // ✔️ Solución: usar placeholder y pasar el parámetro como dato
+  const query = `SELECT * FROM users WHERE id = ?`;
+  console.log("Ejecutando consulta parametrizada:", query, "params:", id);
 
   db.all(query, [], (err, rows) => {
     if (err) {
