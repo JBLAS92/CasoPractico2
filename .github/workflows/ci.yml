@@ -1,0 +1,46 @@
+name: Node.js CI - Seguridad
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-security:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run ESLint (estilo / code quality)
+        run: npm run lint
+
+      - name: Run npm audit (report)
+        run: npm audit --json > audit.json || true
+
+      - name: Fail on HIGH/CRITICAL vulnerabilities
+        run: |
+          node -e "
+const fs = require('fs');
+const a = JSON.parse(fs.readFileSync('audit.json','utf8') || '{}');
+const vul = (a && a.metadata && a.metadata.vulnerabilities) || {};
+if ((vul.critical||0) + (vul.high||0) > 0) {
+  console.error('Vulnerabilidades HIGH/CRITICAL detectadas:', vul);
+  process.exit(1);
+} else {
+  console.log('No hay vulnerabilidades HIGH/CRITICAL.');
+}
+"
+
+      - name: Run tests
+        run: npm test
