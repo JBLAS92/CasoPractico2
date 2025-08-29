@@ -1,35 +1,28 @@
-// test.js
-const sqlite3 = require("sqlite3").verbose();
+const request = require("supertest");
+const app = require("./index");
  
-function testSQLInjection() {
-  const db = new sqlite3.Database(":memory:");
+// Cambia a "vulnerable" o "seguro" según el index.js que estés probando
+const modo = process.env.TEST_MODE || "seguro";
  
-  db.serialize(() => {
-db.run("CREATE TABLE users (id INT, name TEXT)");
-db.run("INSERT INTO users VALUES (1, 'Alice')");
-db.run("INSERT INTO users VALUES (2, 'Bob')");
+describe("Prueba de SQL Injection", () => {
+  it(`Debe comportarse correctamente en modo: ${modo}`, async () => {
+    const res = await request(app).get("/user?name=' OR '1'='1");
  
-    // Intento de inyección SQL
-    const maliciousId = "1 OR 1=1";
- 
-    // ⚠️ Versión vulnerable (concatenación directa)
-    const vulnerableQuery = `SELECT * FROM users WHERE id = ${maliciousId}`;
- 
-    db.all(vulnerableQuery, [], (err, rows) => {
-      if (err) {
-        console.error("Error al ejecutar query:", err);
-        process.exit(1);
-      }
- 
-      if (rows.length > 1) {
-        console.error("❌ Vulnerabilidad detectada: la inyección devolvió múltiples filas");
-        process.exit(1);
-      } else {
-        console.log("✅ Consulta segura (no vulnerable)");
-        process.exit(0);
-      }
-    });
+    if (modo === "vulnerable") {
+      // En la versión vulnerable, la inyección devuelve resultados
+      expect(res.status).toBe(200);
+      expect(res.body.length).toBeGreaterThan(0);
+    } else {
+      // En la versión segura, la inyección NO devuelve nada
+      expect(res.status).toBe(200);
+      expect(res.body.length).toBe(0);
+    }
   });
-}
  
-testSQLInjection();
+  it("Debe devolver un usuario válido si existe", async () => {
+    const res = await request(app).get("/user?name=Alice");
+ 
+    expect(res.status).toBe(200);
+    expect(res.body[0].name).toBe("Alice");
+  });
+});
