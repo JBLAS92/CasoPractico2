@@ -31,4 +31,3 @@ function testSQLInjection() {
 }
 
 testSQLInjection();
-
